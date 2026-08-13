@@ -5,7 +5,7 @@ from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 ADMIN_ID = os.getenv("TELEGRAM_ADMIN_ID")
@@ -16,6 +16,7 @@ if not TOKEN or not ADMIN_ID:
     )
 
 ADMIN_ID = int(ADMIN_ID)
+START_IMAGE = os.path.join(os.path.dirname(__file__), "1.jpg")
 
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=TOKEN)
@@ -35,7 +36,11 @@ def main_menu():
 # Команда /start
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    await message.answer("Добро пожаловать! Выберите действие:", reply_markup=main_menu())
+    await message.answer_photo(
+        photo=FSInputFile(START_IMAGE),
+        caption="Добро пожаловать! Выберите действие:",
+        reply_markup=main_menu(),
+    )
 
 # Нажатие на кнопку "Купить Чит"
 @dp.callback_query(F.data == "buy_cheat")
@@ -55,7 +60,17 @@ async def buy_cheat_callback(callback: types.CallbackQuery):
         [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_main")]
     ])
     
-    await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
+    await callback.message.edit_caption(caption=text, reply_markup=kb, parse_mode="Markdown")
+
+@dp.callback_query(F.data == "info")
+async def info_callback(callback: types.CallbackQuery):
+    await callback.message.edit_caption(
+        caption="✅ Бот соответствует каналу @NexusLoad - Другие Фейки (не ведитесь)",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_main")]
+        ]),
+    )
+    await callback.answer()
 
 # Нажатие на кнопку "Я оплатил"
 @dp.callback_query(F.data == "send_proof")
@@ -67,7 +82,10 @@ async def send_proof_callback(callback: types.CallbackQuery, state: FSMContext):
         [InlineKeyboardButton(text="❌ Отмена", callback_data="back_main")]
     ])
     
-    await callback.message.edit_text("📥 Пожалуйста, отправьте скриншот оплаты прямо в этот чат:", reply_markup=kb)
+    await callback.message.edit_caption(
+        caption="📥 Пожалуйста, отправьте скриншот оплаты прямо в этот чат:",
+        reply_markup=kb,
+    )
 
 # Ловим скриншот (фотографию) от пользователя
 @dp.message(PaymentState.waiting_for_screenshot, F.photo)
@@ -127,7 +145,10 @@ async def admin_decline(callback: types.CallbackQuery):
 @dp.callback_query(F.data == "back_main")
 async def back_main_callback(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
-    await callback.message.edit_text("Главное меню:", reply_markup=main_menu())
+    await callback.message.edit_caption(
+        caption="Добро пожаловать! Выберите действие:",
+        reply_markup=main_menu(),
+    )
 
 async def main():
     await dp.start_polling(bot)
