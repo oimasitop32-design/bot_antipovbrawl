@@ -17,6 +17,13 @@ if not TOKEN or not ADMIN_ID:
 
 ADMIN_ID = int(ADMIN_ID)
 START_IMAGE = os.path.join(os.path.dirname(__file__), "1.jpg")
+WELCOME_TEXT = (
+    "<b>Welcome to NexusLoad.</b>\n\n"
+    "<blockquote>- Единственный рабочий чит без рут прав и без бана.\n"
+    "- Огромное кол-во реально полезных функций.\n"
+    "- Лучший скинченжер на рынке модификаций с сохранением в облаке.</blockquote>\n"
+    "<b>@NexusLoad</b>"
+)
 
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=TOKEN)
@@ -38,8 +45,9 @@ def main_menu():
 async def cmd_start(message: types.Message):
     await message.answer_photo(
         photo=FSInputFile(START_IMAGE),
-        caption="Добро пожаловать! Выберите действие:",
+        caption=WELCOME_TEXT,
         reply_markup=main_menu(),
+        parse_mode="HTML",
     )
 
 # Нажатие на кнопку "Купить Чит"
@@ -146,8 +154,9 @@ async def admin_decline(callback: types.CallbackQuery):
 async def back_main_callback(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.message.edit_caption(
-        caption="Добро пожаловать! Выберите действие:",
+        caption=WELCOME_TEXT,
         reply_markup=main_menu(),
+        parse_mode="HTML",
     )
 
 async def main():
