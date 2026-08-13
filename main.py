@@ -7,8 +7,15 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
-ADMIN_ID = int(os.environ["TELEGRAM_ADMIN_ID"])
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+ADMIN_ID = os.getenv("TELEGRAM_ADMIN_ID")
+
+if not TOKEN or not ADMIN_ID:
+    raise RuntimeError(
+        "Set TELEGRAM_BOT_TOKEN and TELEGRAM_ADMIN_ID environment variables before starting the bot."
+    )
+
+ADMIN_ID = int(ADMIN_ID)
 
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=TOKEN)
@@ -125,5 +132,5 @@ async def back_main_callback(callback: types.CallbackQuery, state: FSMContext):
 async def main():
     await dp.start_polling(bot)
 
-if name == "main":
+if __name__ == "__main__":
     asyncio.run(main())
