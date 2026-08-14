@@ -5,7 +5,13 @@ from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import (
+    FSInputFile,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    KeyboardButton,
+    ReplyKeyboardMarkup,
+)
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 ADMIN_ID = os.getenv("TELEGRAM_ADMIN_ID")
@@ -24,6 +30,38 @@ WELCOME_TEXT = (
     "- Лучший скинченжер на рынке модификаций с сохранением в облаке.</blockquote>\n"
     "<b>@NexusLoad</b>"
 )
+MENU_TEXT = "<b>Меню</b>\n\nВыберите нужный раздел:"
+MENU_BUTTON_TEXT = "💎 Меню"
+REFERRAL_BUTTON_TEXT = "✅ Реферальная система"
+PROMOTION_TEXT = """В акции вы можете получить наш нон-рут чит на неделю!
+
+Что нужно делать?
+
+1. Подписаться на канал: @NexusLoad
+
+2. Отправить 100 комментариев в TikTok, например:
+
+Лучший нон рут у @NexusLoad
+
+Ахахахахха, @NexusLoad сносит, еще и нон рут
+
+Парни, не кирпичьте телефон, лучше купите нон рут в @NexusLoad
+
+В общем, нужно написать текст минимум 3 слова с рекламой нашего чита. В тексте ОБЯЗАТЕЛЬНО должен быть юзернейм нашего официального канала — @NexusLoad.
+
+Важно!
+- Нужно написать именно 100 комментариев, сделав скриншот каждого.
+- Нельзя повторять один и тот же текст более 5 раз.
+- Под одним видео можно писать только 1 комментарий.
+- Обязательно нужно лайкнуть свой комментарий.
+- Комментарий должен быть обязательно под видео с темой читов на Standoff.
+
+После выполнения нажмите кнопку «Выполнил ✅»."""
+SUPPORT_TEXT = (
+    "💬 Поддержка\n\n"
+    "Напишите сюда и отправьте все 100 скриншотов выполнения. "
+    "Бот передаст каждое сообщение администратору."
+)
 
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=TOKEN)
@@ -33,21 +71,64 @@ dp = Dispatcher()
 class PaymentState(StatesGroup):
     waiting_for_screenshot = State()
 
+
+class SupportState(StatesGroup):
+    waiting_for_messages = State()
+
+
+def bottom_menu():
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=MENU_BUTTON_TEXT, style="success")],
+            [KeyboardButton(text=REFERRAL_BUTTON_TEXT, style="primary")],
+        ],
+        resize_keyboard=True,
+        is_persistent=True,
+    )
+
 # Главное меню
 def main_menu():
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🛒 Купить Чит", callback_data="buy_cheat")],
-        [InlineKeyboardButton(text="ℹ️ Информация", callback_data="info")]
+        [InlineKeyboardButton(text="ℹ️ Информация", callback_data="info")],
+        [InlineKeyboardButton(text="🥳 Неделя бесплатно!", callback_data="free_week")],
+    ])
+
+
+def free_week_menu():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Выполнил ✅", callback_data="promotion_done")],
+        [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_main")],
     ])
 
 # Команда /start
 @dp.message(Command("start"))
-async def cmd_start(message: types.Message):
+async def cmd_start(message: types.Message, state: FSMContext):
+    await state.clear()
+    await message.answer(
+        text=WELCOME_TEXT,
+        reply_markup=bottom_menu(),
+        parse_mode="HTML",
+    )
+
+
+@dp.message(F.text == MENU_BUTTON_TEXT)
+async def menu_button_callback(message: types.Message, state: FSMContext):
+    await state.clear()
     await message.answer_photo(
         photo=FSInputFile(START_IMAGE),
-        caption=WELCOME_TEXT,
+        caption=MENU_TEXT,
         reply_markup=main_menu(),
         parse_mode="HTML",
+    )
+
+
+@dp.message(F.text == REFERRAL_BUTTON_TEXT)
+async def referral_button_callback(message: types.Message, state: FSMContext):
+    await state.clear()
+    await message.answer(
+        "🚧 Реферальная система пока в разработке.",
+        reply_markup=bottom_menu(),
     )
 
 # Нажатие на кнопку "Купить Чит"
@@ -69,6 +150,7 @@ async def buy_cheat_callback(callback: types.CallbackQuery):
     ])
     
     await callback.message.edit_caption(caption=text, reply_markup=kb, parse_mode="Markdown")
+    await callback.answer()
 
 @dp.callback_query(F.data == "info")
 async def info_callback(callback: types.CallbackQuery):
@@ -76,6 +158,24 @@ async def info_callback(callback: types.CallbackQuery):
         caption="✅ Бот соответствует каналу @NexusLoad - Другие Фейки (не ведитесь)",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_main")]
+        ]),
+    )
+    await callback.answer()
+
+
+@dp.callback_query(F.data == "free_week")
+async def free_week_callback(callback: types.CallbackQuery):
+    await callback.message.answer(PROMOTION_TEXT, reply_markup=free_week_menu())
+    await callback.answer()
+
+
+@dp.callback_query(F.data == "promotion_done")
+async def promotion_done_callback(callback: types.CallbackQuery, state: FSMContext):
+    await state.set_state(SupportState.waiting_for_messages)
+    await callback.message.edit_text(
+        text=SUPPORT_TEXT,
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_main")],
         ]),
     )
     await callback.answer()
@@ -94,6 +194,7 @@ async def send_proof_callback(callback: types.CallbackQuery, state: FSMContext):
         caption="📥 Пожалуйста, отправьте скриншот оплаты прямо в этот чат:",
         reply_markup=kb,
     )
+    await callback.answer()
 
 # Ловим скриншот (фотографию) от пользователя
 @dp.message(PaymentState.waiting_for_screenshot, F.photo)
@@ -129,6 +230,26 @@ async def process_screenshot(message: types.Message, state: FSMContext):
 @dp.message(PaymentState.waiting_for_screenshot)
 async def process_not_photo(message: types.Message):
     await message.answer("⚠️ Пожалуйста, отправьте именно скриншот (фотографию) перевода.")
+
+
+@dp.message(SupportState.waiting_for_messages)
+async def process_support_message(message: types.Message):
+    user = message.from_user
+    admin_text = (
+        "💬 Новое сообщение в поддержку по акции\n\n"
+        f"👤 Пользователь: @{user.username or 'нет юзернейма'}\n"
+        f"🆔 ID: {user.id}\n"
+        f"🏷 Имя: {user.full_name}"
+    )
+    await bot.send_message(chat_id=ADMIN_ID, text=admin_text)
+    await bot.copy_message(
+        chat_id=ADMIN_ID,
+        from_chat_id=message.chat.id,
+        message_id=message.message_id,
+    )
+    await message.answer("✅ Материал отправлен в поддержку. Можете прислать следующий скриншот.")
+
+
 # Обработка решений админа (Выдать / Отклонить)
 @dp.callback_query(F.data.startswith("confirm_"))
 async def admin_confirm(callback: types.CallbackQuery):
@@ -153,11 +274,21 @@ async def admin_decline(callback: types.CallbackQuery):
 @dp.callback_query(F.data == "back_main")
 async def back_main_callback(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
-    await callback.message.edit_caption(
-        caption=WELCOME_TEXT,
-        reply_markup=main_menu(),
-        parse_mode="HTML",
-    )
+    if callback.message.photo:
+        await callback.message.edit_caption(
+            caption=MENU_TEXT,
+            reply_markup=main_menu(),
+            parse_mode="HTML",
+        )
+    else:
+        await callback.message.delete()
+        await callback.message.answer_photo(
+            photo=FSInputFile(START_IMAGE),
+            caption=MENU_TEXT,
+            reply_markup=main_menu(),
+            parse_mode="HTML",
+        )
+    await callback.answer()
 
 async def main():
     await dp.start_polling(bot)
