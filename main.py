@@ -109,14 +109,17 @@ def save_referrals(referrals):
         json.dump(referrals, file, ensure_ascii=False, indent=2)
 
 
-def display_username(username, user_id):
-    return f"@{username}" if username else f"ID {user_id}"
+def display_username(username, full_name):
+    return f"@{username}" if username else (full_name or "Пользователь")
 
 
-def update_referrer_profile(user_id, username):
+def update_referrer_profile(user_id, username, full_name):
     referrals = load_referrals()
-    entry = referrals.setdefault(str(user_id), {"username": username, "invited": []})
+    entry = referrals.setdefault(
+        str(user_id), {"username": username, "full_name": full_name, "invited": []}
+    )
     entry["username"] = username
+    entry["full_name"] = full_name
     save_referrals(referrals)
 
 
@@ -142,7 +145,10 @@ def register_referral(inviter_id, invited_id, inviter_name):
 def get_referral_leaderboard():
     referrals = load_referrals()
     ranking = [
-        (display_username(entry.get("username"), user_id), len(entry["invited"]))
+        (
+            display_username(entry.get("username"), entry.get("full_name")),
+            len(entry["invited"]),
+        )
         for user_id, entry in referrals.items()
         if entry["invited"]
     ]
@@ -175,7 +181,7 @@ def free_week_menu():
 async def cmd_start(message: types.Message, state: FSMContext):
     await state.clear()
     user = message.from_user
-    update_referrer_profile(user.id, user.username)
+    update_referrer_profile(user.id, user.username, user.full_name)
 
     command_parts = (message.text or "").split(maxsplit=1)
     if len(command_parts) == 2 and command_parts[1].startswith("ref_"):
@@ -208,7 +214,7 @@ async def menu_button_callback(message: types.Message, state: FSMContext):
 async def referral_button_callback(message: types.Message, state: FSMContext):
     await state.clear()
     user = message.from_user
-    update_referrer_profile(user.id, user.username)
+    update_referrer_profile(user.id, user.username, user.full_name)
     bot_info = await bot.get_me()
     referral_count = len(load_referrals().get(str(user.id), {}).get("invited", []))
     referral_link = f"https://t.me/{bot_info.username}?start=ref_{user.id}"
