@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import os
 from aiogram import Bot, Dispatcher, F, types
@@ -33,6 +34,8 @@ WELCOME_TEXT = (
 MENU_TEXT = "<b>Меню</b>\n\nВыберите нужный раздел:"
 MENU_BUTTON_TEXT = "💎 Меню"
 REFERRAL_BUTTON_TEXT = "✅ Реферальная система"
+TOP_REFERRALS_BUTTON_TEXT = "👥 Топ рефералов"
+REFERRALS_FILE = os.path.join(os.path.dirname(__file__), "referrals.json")
 PROMOTION_TEXT = """В акции вы можете получить наш нон-рут чит на неделю!
 
 Что нужно делать?
@@ -86,6 +89,68 @@ def bottom_menu():
         is_persistent=True,
     )
 
+
+def load_referrals():
+    if not os.path.exists(REFERRALS_FILE):
+        with open(REFERRALS_FILE, "w", encoding="utf-8") as file:
+            json.dump({}, file, ensure_ascii=False)
+        return {}
+
+    with open(REFERRALS_FILE, encoding="utf-8") as file:
+        return json.load(file)
+
+
+def save_referrals(referrals):
+    with open(REFERRALS_FILE, "w", encoding="utf-8") as file:
+        json.dump(referrals, file, ensure_ascii=False, indent=2)
+
+
+def display_username(username, user_id):
+    return f"@{username}" if username else f"ID {user_id}"
+
+
+def update_referrer_profile(user_id, username):
+    referrals = load_referrals()
+    entry = referrals.setdefault(str(user_id), {"username": username, "invited": []})
+    entry["username"] = username
+    save_referrals(referrals)
+
+
+def register_referral(inviter_id, invited_id, inviter_name):
+    if inviter_id == invited_id:
+        return False
+
+    referrals = load_referrals()
+    inviter = referrals.setdefault(
+        str(inviter_id), {"username": inviter_name, "invited": []}
+    )
+    inviter["username"] = inviter_name or inviter.get("username")
+
+    if any(str(invited_id) in entry["invited"] for entry in referrals.values()):
+        save_referrals(referrals)
+        return False
+
+    inviter["invited"].append(str(invited_id))
+    save_referrals(referrals)
+    return True
+
+
+def get_referral_leaderboard():
+    referrals = load_referrals()
+    ranking = [
+        (display_username(entry.get("username"), user_id), len(entry["invited"]))
+        for user_id, entry in referrals.items()
+        if entry["invited"]
+    ]
+    return sorted(ranking, key=lambda item: (-item[1], item[0].lower()))
+
+
+def referral_menu():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="💸 Вывод средств", url=f"tg://user?id={ADMIN_ID}")],
+        [InlineKeyboardButton(text=TOP_REFERRALS_BUTTON_TEXT, callback_data="top_referrals")],
+    ])
+
 # Главное меню
 def main_menu():
     return InlineKeyboardMarkup(inline_keyboard=[
@@ -105,6 +170,18 @@ def free_week_menu():
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message, state: FSMContext):
     await state.clear()
+    user = message.from_user
+    update_referrer_profile(user.id, user.username)
+
+    command_parts = (message.text or "").split(maxsplit=1)
+    if len(command_parts) == 2 and command_parts[1].startswith("ref_"):
+        try:
+            inviter_id = int(command_parts[1][4:])
+        except ValueError:
+            inviter_id = None
+        if inviter_id:
+            register_referral(inviter_id, user.id, None)
+
     await message.answer(
         text=WELCOME_TEXT,
         reply_markup=bottom_menu(),
@@ -126,10 +203,32 @@ async def menu_button_callback(message: types.Message, state: FSMContext):
 @dp.message(F.text == REFERRAL_BUTTON_TEXT)
 async def referral_button_callback(message: types.Message, state: FSMContext):
     await state.clear()
+    user = message.from_user
+    update_referrer_profile(user.id, user.username)
+    bot_info = await bot.get_me()
+    referral_count = len(load_referrals().get(str(user.id), {}).get("invited", []))
+    referral_link = f"https://t.me/{bot_info.username}?start=ref_{user.id}"
     await message.answer(
-        "🚧 Реферальная система пока в разработке.",
-        reply_markup=bottom_menu(),
+        "<b>Ваша партнёрская статистика</b>\n\n"
+        f"Перешли по ссылке: {referral_count}\n"
+        "Реферальный процент: 50 %\n\n"
+        f"Ваша реферальная ссылка: {referral_link}",
+        reply_markup=referral_menu(),
+        parse_mode="HTML",
     )
+
+
+@dp.callback_query(F.data == "top_referrals")
+async def top_referrals_callback(callback: types.CallbackQuery):
+    leaderboard = get_referral_leaderboard()
+    if not leaderboard:
+        text = "<b>Топ рефералов</b>\n\nПока никто не пригласил рефералов."
+    else:
+        lines = [f"{index}. {username} - {count} рефералов" for index, (username, count) in enumerate(leaderboard, start=1)]
+        text = "<b>Топ рефералов</b>\n\n" + "\n".join(lines)
+
+    await callback.message.answer(text, parse_mode="HTML")
+    await callback.answer()
 
 # Нажатие на кнопку "Купить Чит"
 @dp.callback_query(F.data == "buy_cheat")
