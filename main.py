@@ -24,6 +24,7 @@ if not TOKEN or not ADMIN_ID:
 
 ADMIN_ID = int(ADMIN_ID)
 START_IMAGE = os.path.join(os.path.dirname(__file__), "2.jpg")
+PAYMENT_IMAGE = os.path.join(os.path.dirname(__file__), "3.jpg")
 WELCOME_TEXT = (
     "<b>Welcome to NexusLoad.</b>\n\n"
     "<blockquote>- Единственный рабочий чит без рут прав и без бана.\n"
@@ -272,7 +273,12 @@ async def buy_cheat_callback(callback: types.CallbackQuery):
     ])
     
     await callback.message.delete()
-    await callback.message.answer(text, reply_markup=kb, parse_mode="Markdown")
+    await callback.message.answer_photo(
+        photo=FSInputFile(PAYMENT_IMAGE),
+        caption=text,
+        reply_markup=kb,
+        parse_mode="Markdown",
+    )
     await callback.answer()
 
 @dp.callback_query(F.data == "info")
@@ -315,8 +321,8 @@ async def send_proof_callback(callback: types.CallbackQuery, state: FSMContext):
         [InlineKeyboardButton(text="❌ Отмена", callback_data="back_main")]
     ])
     
-    await callback.message.edit_text(
-        text="📥 Пожалуйста, отправьте скриншот оплаты прямо в этот чат:",
+    await callback.message.edit_caption(
+        caption="📥 Пожалуйста, отправьте скриншот оплаты прямо в этот чат:",
         reply_markup=kb,
     )
     await callback.answer()
