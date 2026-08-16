@@ -271,13 +271,15 @@ async def buy_cheat_callback(callback: types.CallbackQuery):
         [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_main")]
     ])
     
-    await callback.message.edit_caption(caption=text, reply_markup=kb, parse_mode="Markdown")
+    await callback.message.delete()
+    await callback.message.answer(text, reply_markup=kb, parse_mode="Markdown")
     await callback.answer()
 
 @dp.callback_query(F.data == "info")
 async def info_callback(callback: types.CallbackQuery):
-    await callback.message.edit_caption(
-        caption="✅ Бот соответствует каналу @NexusLoad - Другие Фейки (не ведитесь)",
+    await callback.message.delete()
+    await callback.message.answer(
+        "✅ Бот соответствует каналу @NexusLoad - Другие Фейки (не ведитесь)",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_main")]
         ]),
@@ -287,6 +289,7 @@ async def info_callback(callback: types.CallbackQuery):
 
 @dp.callback_query(F.data == "free_week")
 async def free_week_callback(callback: types.CallbackQuery):
+    await callback.message.delete()
     await callback.message.answer(PROMOTION_TEXT, reply_markup=free_week_menu())
     await callback.answer()
 
@@ -312,8 +315,8 @@ async def send_proof_callback(callback: types.CallbackQuery, state: FSMContext):
         [InlineKeyboardButton(text="❌ Отмена", callback_data="back_main")]
     ])
     
-    await callback.message.edit_caption(
-        caption="📥 Пожалуйста, отправьте скриншот оплаты прямо в этот чат:",
+    await callback.message.edit_text(
+        text="📥 Пожалуйста, отправьте скриншот оплаты прямо в этот чат:",
         reply_markup=kb,
     )
     await callback.answer()
