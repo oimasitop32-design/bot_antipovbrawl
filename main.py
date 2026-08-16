@@ -23,7 +23,7 @@ if not TOKEN or not ADMIN_ID:
     )
 
 ADMIN_ID = int(ADMIN_ID)
-START_IMAGE = os.path.join(os.path.dirname(__file__), "1.jpg")
+START_IMAGE = os.path.join(os.path.dirname(__file__), "2.jpg")
 WELCOME_TEXT = (
     "<b>Welcome to NexusLoad.</b>\n\n"
     "<blockquote>- Единственный рабочий чит без рут прав и без бана.\n"
@@ -31,7 +31,6 @@ WELCOME_TEXT = (
     "- Лучший скинченжер на рынке модификаций с сохранением в облаке.</blockquote>\n"
     "<b>@NexusLoad</b>"
 )
-MENU_TEXT = "<b>Меню</b>\n\nВыберите нужный раздел:"
 MENU_BUTTON_TEXT = "💎 Меню"
 REFERRAL_BUTTON_TEXT = "✅ Реферальная система"
 TOP_REFERRALS_BUTTON_TEXT = "👥 Топ рефералов"
@@ -164,8 +163,10 @@ def referral_menu():
 # Главное меню
 def main_menu():
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🛒 Купить Чит", callback_data="buy_cheat")],
-        [InlineKeyboardButton(text="ℹ️ Информация", callback_data="info")],
+        [
+            InlineKeyboardButton(text="🛒 Купить Чит", callback_data="buy_cheat"),
+            InlineKeyboardButton(text="ℹ️ Информация", callback_data="info"),
+        ],
         [InlineKeyboardButton(text="🥳 Неделя бесплатно!", callback_data="free_week")],
     ])
 
@@ -204,9 +205,7 @@ async def menu_button_callback(message: types.Message, state: FSMContext):
     await state.clear()
     await message.answer_photo(
         photo=FSInputFile(START_IMAGE),
-        caption=MENU_TEXT,
         reply_markup=main_menu(),
-        parse_mode="HTML",
     )
 
 
@@ -418,17 +417,14 @@ async def back_main_callback(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
     if callback.message.photo:
         await callback.message.edit_caption(
-            caption=MENU_TEXT,
+            caption=None,
             reply_markup=main_menu(),
-            parse_mode="HTML",
         )
     else:
         await callback.message.delete()
         await callback.message.answer_photo(
             photo=FSInputFile(START_IMAGE),
-            caption=MENU_TEXT,
             reply_markup=main_menu(),
-            parse_mode="HTML",
         )
     await callback.answer()
 
