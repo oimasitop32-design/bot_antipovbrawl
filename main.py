@@ -79,6 +79,10 @@ class SupportState(StatesGroup):
     waiting_for_messages = State()
 
 
+class WithdrawalState(StatesGroup):
+    waiting_for_request = State()
+
+
 def bottom_menu():
     return ReplyKeyboardMarkup(
         keyboard=[
@@ -147,7 +151,7 @@ def get_referral_leaderboard():
 
 def referral_menu():
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="💸 Вывод средств", url=f"tg://user?id={ADMIN_ID}")],
+        [InlineKeyboardButton(text="💸 Вывод средств", callback_data="withdraw")],
         [InlineKeyboardButton(text=TOP_REFERRALS_BUTTON_TEXT, callback_data="top_referrals")],
     ])
 
@@ -228,6 +232,20 @@ async def top_referrals_callback(callback: types.CallbackQuery):
         text = "<b>Топ рефералов</b>\n\n" + "\n".join(lines)
 
     await callback.message.answer(text, parse_mode="HTML")
+    await callback.answer()
+
+
+@dp.callback_query(F.data == "withdraw")
+async def withdraw_callback(callback: types.CallbackQuery, state: FSMContext):
+    await state.set_state(WithdrawalState.waiting_for_request)
+    await callback.message.answer(
+        "💸 Вывод средств\n\n"
+        "Отправьте одним сообщением реквизиты для вывода и сумму. "
+        "Заявка будет передана администрации.",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="❌ Отмена", callback_data="back_main")],
+        ]),
+    )
     await callback.answer()
 
 # Нажатие на кнопку "Купить Чит"
@@ -347,6 +365,25 @@ async def process_support_message(message: types.Message):
         message_id=message.message_id,
     )
     await message.answer("✅ Материал отправлен в поддержку. Можете прислать следующий скриншот.")
+
+
+@dp.message(WithdrawalState.waiting_for_request)
+async def process_withdrawal_request(message: types.Message, state: FSMContext):
+    user = message.from_user
+    admin_text = (
+        "💸 Новая заявка на вывод средств\n\n"
+        f"👤 Пользователь: @{user.username or 'нет юзернейма'}\n"
+        f"🆔 ID: {user.id}\n"
+        f"🏷 Имя: {user.full_name}"
+    )
+    await bot.send_message(chat_id=ADMIN_ID, text=admin_text)
+    await bot.copy_message(
+        chat_id=ADMIN_ID,
+        from_chat_id=message.chat.id,
+        message_id=message.message_id,
+    )
+    await state.clear()
+    await message.answer("✅ Заявка на вывод отправлена администрации.")
 
 
 # Обработка решений админа (Выдать / Отклонить)
