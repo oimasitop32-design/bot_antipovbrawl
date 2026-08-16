@@ -25,6 +25,7 @@ if not TOKEN or not ADMIN_ID:
 ADMIN_ID = int(ADMIN_ID)
 START_IMAGE = os.path.join(os.path.dirname(__file__), "2.jpg")
 PAYMENT_IMAGE = os.path.join(os.path.dirname(__file__), "3.jpg")
+ACCESS_LINK = "https://t.me/+JpJId4AN4BEyZTAy"
 WELCOME_TEXT = (
     "<b>Welcome to NexusLoad.</b>\n\n"
     "<blockquote>- Единственный рабочий чит без рут прав и без бана.\n"
@@ -406,7 +407,13 @@ async def admin_confirm(callback: types.CallbackQuery):
     user_id = int(callback.data.split("_")[1])
     try:
         # Здесь вы можете сгенерировать и отправить сам чит / ключ / ссылку
-        await bot.send_message(chat_id=user_id, text="🎉 Ваша оплата подтверждена! Спасибо за покупку. Вот ваша ссылка/ключ: [ССЫЛКА]")
+        await bot.send_message(
+            chat_id=user_id,
+            text=(
+                "🎉 Ваша оплата подтверждена! Спасибо за покупку. "
+                f"Вот ваша ссылка/ключ: {ACCESS_LINK}"
+            ),
+        )
         await callback.message.edit_caption(caption=callback.message.caption + "\n\n🟢 Одобрено, чит выдан.")
     except Exception:
         await callback.answer("Не удалось отправить сообщение пользователю.", show_alert=True)
